@@ -1,0 +1,94 @@
+---
+- name: Configure UFW firewall (Debian)
+  when: ansible_facts['os_family'] == "Debian"
+  block:
+    - name: Reset UFW to defaults
+      community.general.ufw:
+        state: reset
+      notify: Disable UFW
+
+    - name: Set UFW default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set UFW default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow TCP ports in UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: "{{ firewall_allowed_tcp_ports }}"
+
+    - name: Allow UDP ports in UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: udp
+      loop: "{{ firewall_allowed_udp_ports }}"
+      when: firewall_allowed_udp_ports is defined
+
+    - name: Allow subnets in UFW
+      community.general.ufw:
+        rule: allow
+        from_ip: "{{ item }}"
+      loop: "{{ firewall_allowed_subnets }}"
+      when: firewall_allowed_subnets is defined
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      notify: Reload UFW
+
+- name: Configure Firewalld (RHEL/Rocky)
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+  block:
+    - name: Start and enable firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Set default zone to drop
+      ansible.posix.firewalld:
+        zone: drop
+        permanent: yes
+        state: enabled
+      notify: Reload Firewalld
+
+    - name: Create custom zone for allowed services
+      ansible.posix.firewalld:
+        zone: public
+        permanent: yes
+        state: present
+      notify: Reload Firewalld
+
+    - name: Allow TCP ports in firewalld
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        state: enabled
+        zone: public
+      loop: "{{ firewall_allowed_tcp_ports }}"
+
+    - name: Allow UDP ports in firewalld
+      ansible.posix.firewalld:
+        port: "{{ item }}/udp"
+        permanent: yes
+        state: enabled
+        zone: public
+      loop: "{{ firewall_allowed_udp_ports }}"
+      when: firewall_allowed_udp_ports is defined
+
+    - name: Allow subnets in firewalld
+      ansible.posix.firewalld:
+        source: "{{ item }}"
+        permanent: yes
+        state: enabled
+        zone: public
+      loop: "{{ firewall_allowed_subnets }}"
+      when: firewall_allowed_subnets is defined

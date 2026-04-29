@@ -1,0 +1,28 @@
+---
+# Common settings for all production servers
+ssh_port: 2222
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ipv6_disable: true
+selinux_state: enforcing
+
+# Firewall rules
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - 80
+  - 443
+
+# Admin user
+admin_user: admin
+admin_groups:
+  - sudo
+
+# SSH Authorized keys (replace with your actual keys)
+ssh_authorized_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@workstation"
+
+# Audit settings
+auditd_enabled: true
+
+# Auto-update settings
+autoupdate_enabled: true

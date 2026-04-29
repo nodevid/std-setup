@@ -1,0 +1,8 @@
+---
+# App server specific playbook
+- name: Configure app servers
+  hosts: appservers
+  become: yes
+  roles:
+    - common
+    - app

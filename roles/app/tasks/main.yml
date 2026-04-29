@@ -1,0 +1,106 @@
+---
+- name: Create app user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: yes
+    create_home: yes
+    home: "{{ app_base_dir }}"
+    shell: /bin/bash
+
+- name: Create app base directory
+  ansible.builtin.file:
+    path: "{{ app_base_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+# Node.js setup
+- name: Install Node.js (Debian)
+  when:
+    - app_type == "nodejs"
+    - ansible_facts['os_family'] == "Debian"
+  block:
+    - name: Add NodeSource repository
+      ansible.builtin.shell: curl -fsSL https://deb.nodesource.com/setup_{{ nodejs_version }}.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+      ignore_errors: yes
+
+    - name: Install Node.js
+      ansible.builtin.apt:
+        name:
+          - nodejs
+          - npm
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+- name: Install Node.js (RHEL/Rocky)
+  when:
+    - app_type == "nodejs"
+    - ansible_facts['os_family'] in ["RedHat", "Rocky"]
+  block:
+    - name: Install Node.js from EPEL
+      ansible.builtin.dnf:
+        name:
+          - nodejs
+          - npm
+        state: present
+
+- name: Deploy Node.js apps
+  when: app_type == "nodejs" and nodejs_apps is defined
+  loop: "{{ nodejs_apps }}"
+  block:
+    - name: Create app directory
+      ansible.builtin.file:
+        path: "{{ app_base_dir }}/{{ item.name }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+
+    - name: Deploy app files (placeholder)
+      ansible.builtin.copy:
+        content: |
+          console.log('Hello from {{ item.name }}');
+        dest: "{{ app_base_dir }}/{{ item.name }}/app.js"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0644'
+
+    - name: Create systemd service for Node.js app
+      ansible.builtin.template:
+        src: nodejs.service.j2
+        dest: /etc/systemd/system/{{ item.name }}.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Node.js app
+      vars:
+        app_name: "{{ item.name }}"
+        app_port: "{{ item.port | default(3000) }}"
+
+# Python setup
+- name: Install Python
+  when: app_type == "python"
+  ansible.builtin.package:
+    name:
+      - "python{{ python_version }}"
+      - "python{{ python_version }}-pip"
+      - "python{{ python_version }}-venv"
+    state: present
+
+- name: Install Python packages
+  when: app_type == "python" and python_packages is defined
+  ansible.builtin.pip:
+    name: "{{ python_packages }}"
+    executable: "pip{{ python_version }}"
+    state: present
+
+# Java setup
+- name: Install Java
+  when: app_type == "java"
+  ansible.builtin.package:
+    name: "{{ java_flavor }}-{{ java_version }}-jdk"
+    state: present

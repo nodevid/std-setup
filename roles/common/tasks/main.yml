@@ -1,0 +1,32 @@
+---
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] | lower }}.yml"
+
+- name: Include Debian-specific tasks
+  ansible.builtin.include_tasks: debian.yml
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Include RHEL-specific tasks
+  ansible.builtin.include_tasks: rhel.yml
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+
+- name: Include user management tasks
+  ansible.builtin.include_tasks: user_management.yml
+
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh_hardening.yml
+
+- name: Include firewall tasks
+  ansible.builtin.include_tasks: firewall.yml
+
+- name: Include fail2ban tasks
+  ansible.builtin.include_tasks: fail2ban.yml
+
+- name: Include auditd tasks
+  ansible.builtin.include_tasks: auditd.yml
+
+- name: Include system hardening tasks
+  ansible.builtin.include_tasks: system_hardening.yml
+
+- name: Include autoupdate tasks
+  ansible.builtin.include_tasks: autoupdate.yml

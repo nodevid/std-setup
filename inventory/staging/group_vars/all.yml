@@ -1,0 +1,19 @@
+---
+ssh_port: 2222
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ipv6_disable: true
+selinux_state: enforcing
+
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+
+admin_user: admin
+admin_groups:
+  - sudo
+
+ssh_authorized_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@workstation"
+
+auditd_enabled: true
+autoupdate_enabled: true

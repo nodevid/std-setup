@@ -1,0 +1,11 @@
+---
+# Handlers for database role
+- name: Restart MySQL
+  ansible.builtin.service:
+    name: mysql
+    state: restarted
+
+- name: Restart PostgreSQL
+  ansible.builtin.service:
+    name: postgresql
+    state: restarted

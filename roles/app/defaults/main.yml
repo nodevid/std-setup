@@ -1,0 +1,22 @@
+---
+# App role defaults
+app_type: nodejs  # nodejs, python, java
+
+# Node.js settings
+nodejs_version: "18"
+nodejs_install_npm: yes
+nodejs_apps: []
+
+# Python settings
+python_version: "3"
+python_packages: []
+python_virtualenvs: []
+
+# Java settings
+java_version: "11"
+java_flavor: openjdk  # openjdk or oracle
+
+# General app settings
+app_user: app
+app_group: app
+app_base_dir: /opt/apps

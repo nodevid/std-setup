@@ -1,0 +1,25 @@
+---
+# Main site playbook - applies all roles
+- name: Apply common configuration to all servers
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+- name: Configure webservers
+  hosts: webservers
+  become: yes
+  roles:
+    - webserver
+
+- name: Configure databases
+  hosts: databases
+  become: yes
+  roles:
+    - database
+
+- name: Configure app servers
+  hosts: appservers
+  become: yes
+  roles:
+    - app

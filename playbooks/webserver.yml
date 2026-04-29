@@ -1,0 +1,8 @@
+---
+# Webserver specific playbook
+- name: Configure webservers
+  hosts: webservers
+  become: yes
+  roles:
+    - common
+    - webserver

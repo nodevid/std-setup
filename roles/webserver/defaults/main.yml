@@ -1,0 +1,33 @@
+---
+# Webserver role defaults
+webserver_type: nginx  # or apache
+
+# Nginx settings
+nginx_version: present
+nginx_ports:
+  - 80
+  - 443
+nginx_remove_default_site: true
+nginx_sites: []
+
+# Apache settings
+apache_version: present
+apache_ports:
+  - 80
+  - 443
+apache_modules:
+  - rewrite
+  - ssl
+  - headers
+  - expires
+
+# SSL/TLS settings
+ssl_enabled: false
+ssl_certificate_path: /etc/ssl/certs
+ssl_private_key_path: /etc/ssl/private
+ssl_protocols: "TLSv1.2 TLSv1.3"
+ssl_ciphers: "HIGH:!aNULL:!MD5:!3DES"
+ssl_prefer_server_ciphers: on
+
+# Security headers
+security_headers_enabled: true

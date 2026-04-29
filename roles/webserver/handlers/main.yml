@@ -1,0 +1,6 @@
+---
+# Handlers for webserver role
+- name: Restart webserver
+  ansible.builtin.service:
+    name: "{{ 'nginx' if webserver_type == 'nginx' else ('apache2' if ansible_facts['os_family'] == 'Debian' else 'httpd') }}"
+    state: restarted

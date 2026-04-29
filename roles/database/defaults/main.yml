@@ -1,0 +1,21 @@
+---
+# Database role defaults
+database_type: mysql  # or postgresql
+
+# MySQL settings
+mysql_root_password: "{{ vault_mysql_root_password | default('changeme') }}"
+mysql_version: present
+mysql_bind_address: "127.0.0.1"
+mysql_port: 3306
+mysql_databases: []
+mysql_users: []
+
+# PostgreSQL settings
+postgresql_version: "14"
+postgresql_port: 5432
+postgresql_listen_addresses: "localhost"
+postgresql_databases: []
+postgresql_users: []
+
+# Security
+database_hardening_enabled: true

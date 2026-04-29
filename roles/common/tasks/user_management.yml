@@ -1,0 +1,47 @@
+---
+- name: Create admin user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    groups: "{{ admin_groups | join(',') }}"
+    shell: "{{ admin_shell | default('/bin/bash') }}"
+    password: "{{ admin_password | default('*') }}"
+    create_home: yes
+    state: present
+  when: create_admin_user | default(true)
+
+- name: Create .ssh directory for admin user
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: '0700'
+  when: create_admin_user | default(true)
+
+- name: Deploy SSH authorized keys for admin user
+  ansible.posix.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ ssh_authorized_keys }}"
+  when:
+    - create_admin_user | default(true)
+    - ssh_authorized_keys is defined
+    - ssh_authorized_keys | length > 0
+
+- name: Configure sudoers for admin user (no password)
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/{{ admin_user }}
+    line: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL"
+    state: present
+    create: yes
+    mode: '0440'
+    validate: /usr/sbin/visudo -cf %s
+  when: create_admin_user | default(true)
+
+- name: Remove default user (if applicable)
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: yes
+  loop: "{{ users_to_remove | default([]) }}"

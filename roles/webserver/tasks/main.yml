@@ -1,0 +1,82 @@
+---
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_facts['os_family'] | lower }}.yml"
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install Nginx
+  ansible.builtin.package:
+    name: nginx
+    state: "{{ nginx_version }}"
+  when: webserver_type == "nginx"
+  notify: Restart webserver
+
+- name: Install Apache
+  ansible.builtin.package:
+    name: "{{ 'apache2' if ansible_facts['os_family'] == 'Debian' else 'httpd' }}"
+    state: "{{ apache_version }}"
+  when: webserver_type == "apache"
+  notify: Restart webserver
+
+- name: Enable Apache modules
+  community.general.apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ apache_modules }}"
+  when: webserver_type == "apache" and ansible_facts['os_family'] == "Debian"
+  notify: Restart webserver
+  ignore_errors: yes
+
+- name: Remove default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  when:
+    - webserver_type == "nginx"
+    - nginx_remove_default_site
+  notify: Restart webserver
+
+- name: Configure Nginx sites
+  ansible.builtin.template:
+    src: nginx_site.j2
+    dest: /etc/nginx/sites-available/{{ item.name }}
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ nginx_sites }}"
+  when: webserver_type == "nginx"
+  notify: Restart webserver
+
+- name: Enable Nginx sites
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/{{ item.name }}
+    dest: /etc/nginx/sites-enabled/{{ item.name }}
+    state: link
+  loop: "{{ nginx_sites }}"
+  when: webserver_type == "nginx"
+  notify: Restart webserver
+
+- name: Configure SSL/TLS for Nginx
+  ansible.builtin.template:
+    src: nginx_ssl.conf.j2
+    dest: /etc/nginx/snippets/ssl-params.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: webserver_type == "nginx" and ssl_enabled
+  notify: Restart webserver
+
+- name: Configure security headers for Nginx
+  ansible.builtin.template:
+    src: nginx_security_headers.j2
+    dest: /etc/nginx/snippets/security-headers.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: webserver_type == "nginx" and security_headers_enabled
+  notify: Restart webserver
+
+- name: Ensure webserver service is enabled and running
+  ansible.builtin.service:
+    name: "{{ 'nginx' if webserver_type == 'nginx' else ('apache2' if ansible_facts['os_family'] == 'Debian' else 'httpd') }}"
+    state: started
+    enabled: yes

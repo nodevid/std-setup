@@ -1,0 +1,30 @@
+---
+# Nginx site configuration template
+server {
+    listen {{ item.port | default(80) }};
+    listen [::]:{{ item.port | default(80) }} ipv6only=on;
+    server_name {{ item.server_name | join(' ') }};
+
+    {% if item.ssl | default(false) and ssl_enabled %}
+    listen {{ item.ssl_port | default(443) }} ssl http2;
+    listen [::]:{{ item.ssl_port | default(443) }} ssl http2 ipv6only=on;
+    include snippets/ssl-params.conf;
+    ssl_certificate {{ item.ssl_certificate | default(ssl_certificate_path + '/nginx-selfsigned.crt') }};
+    ssl_certificate_key {{ item.ssl_certificate_key | default(ssl_private_key_path + '/nginx-selfsigned.key') }};
+    {% endif %}
+
+    {% if security_headers_enabled %}
+    include snippets/security-headers.conf;
+    {% endif %}
+
+    root {{ item.root | default('/var/www/html') }};
+    index {{ item.index | default('index.html index.htm index.nginx-debian.html') }};
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    {% if item.extra_config is defined %}
+    {{ item.extra_config }}
+    {% endif %}
+}

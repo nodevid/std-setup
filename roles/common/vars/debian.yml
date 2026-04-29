@@ -1,0 +1,40 @@
+---
+# Debian/Ubuntu specific variables
+os_family: debian
+
+# Packages
+common_packages:
+  - vim
+  - curl
+  - wget
+  - htop
+  - net-tools
+  - fail2ban
+  - auditd
+  - audispd-plugins
+  - ufw
+
+# Firewall
+firewall_package: ufw
+firewall_service: ufw
+
+# SELinux equivalent
+apparmor_enabled: true
+
+# Auto-update
+autoupdate_package: unattended-upgrades
+autoupdate_service: unattended-upgrades
+
+# SSH
+ssh_service: ssh
+
+# Unused filesystems to disable
+unused_filesystems:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+  - squashfs
+  - udf
+  - vfat

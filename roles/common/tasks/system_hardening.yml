@@ -1,0 +1,134 @@
+---
+- name: Disable IPv6
+  when: ipv6_disable | default(true)
+  block:
+    - name: Disable IPv6 in sysctl (runtime)
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: '1'
+        state: present
+        reload: yes
+      loop:
+        - net.ipv6.conf.all.disable_ipv6
+        - net.ipv6.conf.default.disable_ipv6
+        - net.ipv6.conf.lo.disable_ipv6
+
+    - name: Disable IPv6 via grub (persistent)
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX='
+        line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1 {{ grub_cmdline_linux | default("") }}"'
+        backrefs: no
+      notify: Update Grub
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Disable IPv6 via grub (RHEL/Rocky persistent)
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX='
+        line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1 {{ grub_cmdline_linux | default("") }}"'
+        backrefs: no
+      notify: Update Grub
+      when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+
+- name: Disable unused filesystems
+  when: disable_unused_filesystems | default(true)
+  block:
+    - name: Create modprobe config to disable unused filesystems
+      ansible.builtin.copy:
+        content: |
+          {% for fs in unused_filesystems %}
+          install {{ fs }} /bin/true
+          {% endfor %}
+        dest: /etc/modprobe.d/disable-filesystems.conf
+        owner: root
+        group: root
+        mode: '0600'
+
+- name: Harden /tmp partition
+  when: harden_tmp_partition | default(true)
+  block:
+    - name: Check if /tmp is a separate partition
+      ansible.builtin.shell: mount | grep -E '\\s/tmp\\s'
+      register: tmp_mount
+      changed_when: false
+      failed_when: false
+
+    - name: Set /tmp mount options (if separate partition)
+      ansible.builtin.mount:
+        path: /tmp
+        src: "{{ item.device }}"
+        fstype: "{{ item.fstype }}"
+        opts: "{{ item.options }},nodev,nosuid,noexec"
+        state: present
+      loop: "{{ ansible_mounts }}"
+      when:
+        - item.mount == '/tmp'
+        - "'nodev' not in item.options or 'nosuid' not in item.options or 'noexec' not in item.options"
+
+- name: Disable core dumps
+  when: disable_core_dumps | default(true)
+  block:
+    - name: Set limits.conf to disable core dumps
+      ansible.builtin.lineinfile:
+        path: /etc/security/limits.conf
+        line: "* hard core 0"
+        state: present
+
+    - name: Set sysctl to disable core dumps
+      ansible.posix.sysctl:
+        name: fs.suid_dumpable
+        value: '0'
+        state: present
+        reload: yes
+
+- name: Set secure permissions on critical files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0600'
+  loop:
+    - /etc/passwd
+    - /etc/shadow
+    - /etc/gshadow
+    - /etc/group
+  ignore_errors: yes
+
+- name: Disable USB storage
+  ansible.builtin.copy:
+    content: "install usb-storage /bin/true\n"
+    dest: /etc/modprobe.d/disable-usb-storage.conf
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Set warning banner for login
+  ansible.builtin.copy:
+    content: |
+      *******************************************************************************
+                          AUTHORIZED ACCESS ONLY
+      *******************************************************************************
+      This system is restricted to authorized users only. All activities on
+      this system are monitored and recorded. Unauthorized access is strictly
+      prohibited and will be prosecuted to the full extent of the law.
+      *******************************************************************************
+    dest: /etc/issue
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Set warning banner for SSH login
+  ansible.builtin.copy:
+    content: |
+      *******************************************************************************
+                          AUTHORIZED ACCESS ONLY
+      *******************************************************************************
+      This system is restricted to authorized users only. All activities on
+      this system are monitored and recorded. Unauthorized access is strictly
+      prohibited and will be prosecuted to the full extent of the law.
+      *******************************************************************************
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: '0644'

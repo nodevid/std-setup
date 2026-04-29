@@ -1,0 +1,21 @@
+---
+- name: Enable EPEL repository (RHEL/Rocky)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+
+- name: Install common packages (RHEL/Rocky)
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+
+- name: Set SELinux to enforcing
+  ansible.posix.selinux:
+    policy: "{{ selinux_policy | default('targeted') }}"
+    state: "{{ selinux_state | default('enforcing') }}"
+  when:
+    - ansible_facts['os_family'] in ["RedHat", "Rocky"]
+    - selinux_state is defined
+  ignore_errors: yes

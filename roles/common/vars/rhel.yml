@@ -1,0 +1,39 @@
+---
+# RHEL/Rocky/CentOS specific variables
+os_family: rhel
+
+# Packages
+common_packages:
+  - vim
+  - curl
+  - wget
+  - htop
+  - net-tools
+  - fail2ban
+  - audit
+  - firewalld
+
+# Firewall
+firewall_package: firewalld
+firewall_service: firewalld
+
+# SELinux
+selinux_policy: targeted
+
+# Auto-update
+autoupdate_package: dnf-automatic
+autoupdate_service: dnf-automatic
+
+# SSH
+ssh_service: sshd
+
+# Unused filesystems to disable
+unused_filesystems:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+  - squashfs
+  - udf
+  - vfat

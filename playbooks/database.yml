@@ -1,0 +1,8 @@
+---
+# Database specific playbook
+- name: Configure databases
+  hosts: databases
+  become: yes
+  roles:
+    - common
+    - database

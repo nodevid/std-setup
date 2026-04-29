@@ -1,0 +1,85 @@
+---
+- name: Configure unattended-upgrades (Debian)
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - autoupdate_enabled | default(true)
+  block:
+    - name: Install unattended-upgrades
+      ansible.builtin.apt:
+        name:
+          - unattended-upgrades
+          - apt-listchanges
+        state: present
+
+    - name: Configure unattended-upgrades
+      ansible.builtin.copy:
+        content: |
+          Unattended-Upgrade::Allowed-Origins {
+              "${distro_id}:${distro_codename}";
+              "${distro_id}:${distro_codename}-security";
+              "${distro_id}ESM:${distro_codename}";
+          };
+          Unattended-Upgrade::Package-Blacklist {
+          };
+          Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+          Unattended-Upgrade::MinimalSteps "true";
+          Unattended-Upgrade::InstallOnShutdown "false";
+          Unattended-Upgrade::Mail "root";
+          Unattended-Upgrade::MailOnlyOnError "true";
+          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+          Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "false";
+          Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable automatic updates
+      ansible.builtin.copy:
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Download-Upgradeable-Packages "1";
+          APT::Periodic::AutocleanInterval "7";
+          APT::Periodic::Unattended-Upgrade "1";
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable unattended-upgrades service
+      ansible.builtin.service:
+        name: unattended-upgrades
+        enabled: yes
+
+- name: Configure dnf-automatic (RHEL/Rocky)
+  when:
+    - ansible_facts['os_family'] in ["RedHat", "Rocky"]
+    - autoupdate_enabled | default(true)
+  block:
+    - name: Install dnf-automatic
+      ansible.builtin.dnf:
+        name: dnf-automatic
+        state: present
+
+    - name: Configure dnf-automatic
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/automatic.conf
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value }}"
+        state: present
+      loop:
+        - { key: "upgrade_type", value: "security" }
+        - { key: "download_updates", value: "yes" }
+        - { key: "apply_updates", value: "yes" }
+        - { key: "emit_via", value: "email" }
+        - { key: "email_from", value: "root@{{ ansible_facts['fqdn'] }}" }
+        - { key: "email_to", value: "root" }
+      notify: Restart dnf-automatic
+
+    - name: Enable and start dnf-automatic timer
+      ansible.builtin.systemd:
+        name: dnf-automatic.timer
+        enabled: yes
+        state: started
+        daemon_reload: yes

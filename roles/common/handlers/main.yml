@@ -1,0 +1,44 @@
+---
+# Handlers for common role
+
+- name: Restart SSH
+  ansible.builtin.service:
+    name: "{{ ssh_service | default('ssh') }}"
+    state: restarted
+
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Disable UFW
+  community.general.ufw:
+    state: disabled
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Reload Firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: reloaded
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
+
+- name: Restart Fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+
+- name: Restart Auditd
+  ansible.builtin.service:
+    name: "{{ 'auditd' if ansible_facts['os_family'] == 'Debian' else 'auditd' }}"
+    state: restarted
+
+- name: Update Grub
+  ansible.builtin.command: update-grub
+  when: ansible_facts['os_family'] == "Debian"
+  changed_when: true
+
+- name: Restart dnf-automatic
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    state: restarted
+  when: ansible_facts['os_family'] in ["RedHat", "Rocky"]

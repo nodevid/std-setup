@@ -1,0 +1,13 @@
+# SSL/TLS configuration for Nginx
+ssl_protocols {{ ssl_protocols }};
+ssl_ciphers '{{ ssl_ciphers }}';
+ssl_prefer_server_ciphers {{ ssl_prefer_server_ciphers }};
+
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
+ssl_stapling on;
+ssl_stapling_verify on;
+
+# Security
+ssl_session_tickets off;
+ssl_early_data off;

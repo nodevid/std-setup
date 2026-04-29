@@ -1,0 +1,8 @@
+---
+# Handlers for app role
+- name: Restart Node.js app
+  ansible.builtin.systemd:
+    name: "{{ app_name }}.service"
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
