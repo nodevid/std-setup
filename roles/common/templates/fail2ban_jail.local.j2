@@ -10,14 +10,14 @@ ignoreip = {{ fail2ban_ignoreip | join(' ') }}
 enabled = true
 port = {{ ssh_port | default('2222') }}
 filter = sshd
-logpath = /var/log/auth.log
+logpath = {{ fail2ban_logpath | default('/var/log/auth.log') }}
 maxretry = {{ fail2ban_maxretry | default(3) }}
 
 [sshd-ddos]
 enabled = true
 port = {{ ssh_port | default('2222') }}
 filter = sshd-ddos
-logpath = /var/log/auth.log
+logpath = {{ fail2ban_logpath | default('/var/log/auth.log') }}
 
 [recidive]
 enabled = true

@@ -1,4 +1,9 @@
 ---
+- name: Fail if mysql_root_password is not changed from default
+  ansible.builtin.fail:
+    msg: "mysql_root_password is still set to 'changeme'. Set vault_mysql_root_password via Ansible Vault or override mysql_root_password in your inventory."
+  when: database_type == "mysql" and mysql_root_password == "changeme"
+
 - name: Install MySQL
   ansible.builtin.package:
     name:
@@ -14,7 +19,7 @@
       - "postgresql-{{ postgresql_version }}"
       - "postgresql-contrib-{{ postgresql_version }}"
       - python3-psycopg2
-    state: "{{ postgresql_version }}"
+    state: present
   when: database_type == "postgresql"
   notify: Restart PostgreSQL
 

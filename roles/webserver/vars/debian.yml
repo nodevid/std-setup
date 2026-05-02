@@ -1,0 +1,6 @@
+---
+webserver_service: nginx
+webserver_config_path: /etc/nginx/nginx.conf
+webserver_sites_available: /etc/nginx/sites-available
+webserver_sites_enabled: /etc/nginx/sites-enabled
+webserver_snippets: /etc/nginx/snippets

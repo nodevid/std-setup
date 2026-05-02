@@ -1,8 +1,6 @@
 ---
-appservers:
-  vars:
-    firewall_allowed_tcp_ports:
-      - "{{ ssh_port }}"
-      - 3000
-      - 8000
-      - 8080
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - 3000
+  - 8000
+  - 8080

@@ -1,0 +1,29 @@
+---
+- name: Create app directory
+  ansible.builtin.file:
+    path: "{{ app_base_dir }}/{{ nodejs_app.name }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Deploy app files (placeholder)
+  ansible.builtin.copy:
+    content: |
+      console.log('Hello from {{ nodejs_app.name }}');
+    dest: "{{ app_base_dir }}/{{ nodejs_app.name }}/app.js"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+
+- name: Create systemd service for Node.js app
+  ansible.builtin.template:
+    src: nodejs.service.j2
+    dest: /etc/systemd/system/{{ nodejs_app.name }}.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Node.js app
+  vars:
+    app_name: "{{ nodejs_app.name }}"
+    app_port: "{{ nodejs_app.port | default(3000) }}"

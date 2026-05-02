@@ -1,0 +1,20 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    app_type: nodejs
+    nodejs_version: "18"
+    nodejs_apps:
+      - name: testapp
+        port: 3000
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common
+    - role: app

@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    app_type: python
+    python_version: "3"
+    python_packages:
+      - requests
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common
+    - role: app

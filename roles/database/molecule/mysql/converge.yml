@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    database_type: mysql
+    database_hardening_enabled: true
+    mysql_root_password: "testpassword123"
+    mysql_databases:
+      - name: testdb
+    mysql_users:
+      - name: testuser
+        password: "testuserpass"
+        priv: "testdb.*:ALL"
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common
+    - role: database

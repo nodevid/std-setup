@@ -1,0 +1,19 @@
+---
+dependency:
+  name: galaxy
+  options:
+    role-file: ../../requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: database-mysql-debian12
+    image: debian:12
+    pre_build_image: true
+    command: /bin/bash -c "while true; do sleep 3600; done"
+    privileged: true
+provisioner:
+  name: ansible
+  playbooks:
+    converge: converge.yml
+verifier:
+  name: testinfra

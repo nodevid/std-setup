@@ -1,0 +1,8 @@
+---
+skip_list:
+  - yaml[truthy]
+  - var-naming[no-role-prefix]
+
+warn_list:
+  - ignore-errors
+  - risky-shell-pipe

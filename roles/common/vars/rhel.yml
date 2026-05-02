@@ -27,6 +27,9 @@ autoupdate_service: dnf-automatic
 # SSH
 ssh_service: sshd
 
+# Fail2ban
+fail2ban_logpath: /var/log/secure
+
 # Unused filesystems to disable
 unused_filesystems:
   - cramfs

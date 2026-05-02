@@ -16,18 +16,18 @@
     - name: Disable IPv6 via grub (persistent)
       ansible.builtin.lineinfile:
         path: /etc/default/grub
-        regexp: '^GRUB_CMDLINE_LINUX='
-        line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1 {{ grub_cmdline_linux | default("") }}"'
-        backrefs: no
+        regexp: '^(GRUB_CMDLINE_LINUX=".*)(")$'
+        line: '\1 ipv6.disable=1\2'
+        backrefs: yes
       notify: Update Grub
       when: ansible_facts['os_family'] == "Debian"
 
     - name: Disable IPv6 via grub (RHEL/Rocky persistent)
       ansible.builtin.lineinfile:
         path: /etc/default/grub
-        regexp: '^GRUB_CMDLINE_LINUX='
-        line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1 {{ grub_cmdline_linux | default("") }}"'
-        backrefs: no
+        regexp: '^(GRUB_CMDLINE_LINUX=".*)(")$'
+        line: '\1 ipv6.disable=1\2'
+        backrefs: yes
       notify: Update Grub
       when: ansible_facts['os_family'] in ["RedHat", "Rocky"]
 
@@ -48,23 +48,14 @@
 - name: Harden /tmp partition
   when: harden_tmp_partition | default(true)
   block:
-    - name: Check if /tmp is a separate partition
-      ansible.builtin.shell: mount | grep -E '\\s/tmp\\s'
-      register: tmp_mount
-      changed_when: false
-      failed_when: false
-
     - name: Set /tmp mount options (if separate partition)
-      ansible.builtin.mount:
+      ansible.posix.mount:
         path: /tmp
-        src: "{{ item.device }}"
-        fstype: "{{ item.fstype }}"
-        opts: "{{ item.options }},nodev,nosuid,noexec"
+        src: "{{ ansible_mounts | selectattr('mount', 'equalto', '/tmp') | map(attribute='device') | first }}"
+        fstype: "{{ ansible_mounts | selectattr('mount', 'equalto', '/tmp') | map(attribute='fstype') | first }}"
+        opts: "{{ ansible_mounts | selectattr('mount', 'equalto', '/tmp') | map(attribute='options') | first | join(',') }},nodev,nosuid,noexec"
         state: present
-      loop: "{{ ansible_mounts }}"
-      when:
-        - item.mount == '/tmp'
-        - "'nodev' not in item.options or 'nosuid' not in item.options or 'noexec' not in item.options"
+      when: ansible_mounts | selectattr('mount', 'equalto', '/tmp') | list | length > 0
 
 - name: Disable core dumps
   when: disable_core_dumps | default(true)
@@ -83,17 +74,27 @@
         reload: yes
 
 - name: Set secure permissions on critical files
-  ansible.builtin.file:
-    path: "{{ item }}"
-    owner: root
-    group: root
-    mode: '0600'
-  loop:
-    - /etc/passwd
-    - /etc/shadow
-    - /etc/gshadow
-    - /etc/group
   ignore_errors: yes
+  block:
+    - name: Set permissions on world-readable files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - /etc/passwd
+        - /etc/group
+
+    - name: Set permissions on sensitive files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        owner: root
+        group: root
+        mode: '0640'
+      loop:
+        - /etc/shadow
+        - /etc/gshadow
 
 - name: Disable USB storage
   ansible.builtin.copy:

@@ -9,31 +9,13 @@ Repository Ansible untuk standar konfigurasi dan hardening server yang mendukung
 - **Modular Roles**: Terpisah antara common, webserver, database, dan app
 - **Environment Separation**: Production dan staging inventories
 - **Custom SSH Port**: Default port 2222 (bisa dikonfigurasi)
+- **Test Coverage**: 76+ tests via Molecule + testinfra across 6 scenarios
 
-## Struktur Direktori
+## Requirements
 
-```
-std-setup/
-├── ansible.cfg                    # Konfigurasi Ansible
-├── requirements.yml               # Dependensi collections/roles
-├── inventory/
-│   ├── production/               # Production environment
-│   │   ├── hosts.yml
-│   │   └── group_vars/
-│   └── staging/                  # Staging environment
-│       ├── hosts.yml
-│       └── group_vars/
-├── roles/
-│   ├── common/                   # Hardening & base config
-│   ├── webserver/                # Nginx/Apache
-│   ├── database/                 # MySQL/PostgreSQL
-│   └── app/                      # Node.js/Python/Java
-└── playbooks/
-    ├── site.yml                  # Master playbook
-    ├── webserver.yml
-    ├── database.yml
-    └── app.yml
-```
+- Ansible >= 2.9
+- Python 3 on target hosts
+- SSH access dengan key-based authentication
 
 ## Quick Start
 
@@ -81,7 +63,160 @@ ansible-playbook playbooks/site.yml
 ansible-playbook playbooks/webserver.yml
 ansible-playbook playbooks/database.yml
 ansible-playbook playbooks/app.yml
+
+# Dry-run (check mode)
+ansible-playbook --check playbooks/site.yml
+
+# Target spesifik role
+ansible-playbook --tags "ssh,firewall" playbooks/site.yml
 ```
+
+## Struktur Direktori
+
+```
+std-setup/
+├── ansible.cfg                    # Konfigurasi Ansible
+├── .ansible-lint                  # Ansible-lint rules
+├── requirements.yml               # Dependensi collections/roles
+├── inventory/
+│   ├── production/               # Production environment
+│   │   ├── hosts.yml
+│   │   └── group_vars/
+│   └── staging/                  # Staging environment
+│       ├── hosts.yml
+│       └── group_vars/
+├── roles/
+│   ├── common/                   # Hardening & base config
+│   │   └── molecule/default/     # Molecule tests (33 tests)
+│   ├── webserver/                # Nginx/Apache
+│   │   └── molecule/default/     # Molecule tests (10 tests)
+│   ├── database/                 # MySQL/PostgreSQL
+│   │   ├── molecule/mysql/       # Molecule tests (8 tests)
+│   │   └── molecule/postgresql/  # Molecule tests (6 tests)
+│   └── app/                      # Node.js/Python/Java
+│       ├── molecule/nodejs/      # Molecule tests (11 tests)
+│       └── molecule/python/      # Molecule tests (8 tests)
+└── playbooks/
+    ├── site.yml                  # Master playbook
+    ├── webserver.yml
+    ├── database.yml
+    └── app.yml
+```
+
+## Running Tests
+
+### Prerequisites
+
+```bash
+pip install molecule molecule-plugins[docker] docker pytest-testinfra
+```
+
+### Run All Tests for a Role
+
+```bash
+cd roles/common && molecule test
+cd roles/webserver && molecule test
+cd roles/database && molecule test -s mysql
+cd roles/database && molecule test -s postgresql
+cd roles/app && molecule test -s nodejs
+cd roles/app && molecule test -s python
+```
+
+### Run Specific Stages
+
+```bash
+# Only converge (apply role) without destroy
+molecule converge
+
+# Only verify (run tests)
+molecule verify
+
+# Check playbook syntax
+molecule syntax
+```
+
+### Lint Check
+
+```bash
+ansible-lint
+```
+
+### Test Scenarios Overview
+
+| Role | Scenario | Platforms | Test Count |
+|------|----------|-----------|------------|
+| `common` | `default` | debian12, ubuntu2204 | 33 tests |
+| `webserver` | `default` | debian12, ubuntu2204 | 10 tests |
+| `database` | `mysql` | debian12 | 8 tests |
+| `database` | `postgresql` | debian12 | 6 tests |
+| `app` | `nodejs` | debian12 | 11 tests |
+| `app` | `python` | debian12 | 8 tests |
+
+> **Note**: Docker containers require network access to install packages. Ensure your Docker environment can reach package repositories before running tests.
+
+## Makefile Commands
+
+Semua operasi bisa dijalankan via `make`. Lihat semua target:
+
+```bash
+make help
+```
+
+### Dependencies
+
+| Command | Description |
+|---------|-------------|
+| `make deps` | Install Ansible Galaxy collections dari `requirements.yml` |
+| `make dev-deps` | Install Python test dependencies (molecule, testinfra, ansible-lint) |
+
+### Linting
+
+| Command | Description |
+|---------|-------------|
+| `make lint` | Run `ansible-lint` pada seluruh repo |
+
+### Playbooks
+
+| Command | Description |
+|---------|-------------|
+| `make run` | Jalankan `site.yml` ke production inventory |
+| `make run-staging` | Jalankan `site.yml` ke staging inventory |
+| `make run-web` | Jalankan `webserver.yml` playbook |
+| `make run-db` | Jalankan `database.yml` playbook |
+| `make run-app` | Jalankan `app.yml` playbook |
+| `make check` | Dry-run `site.yml` ke production (`--check` mode) |
+| `make check-staging` | Dry-run `site.yml` ke staging (`--check` mode) |
+
+### Testing (Molecule)
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Jalankan SEMUA molecule tests (6 scenarios) |
+| `make test-common` | Test `common` role (debian12, ubuntu2204) |
+| `make test-web` | Test `webserver` role (debian12, ubuntu2204) |
+| `make test-mysql` | Test `database` role dengan MySQL |
+| `make test-pgsql` | Test `database` role dengan PostgreSQL |
+| `make test-nodejs` | Test `app` role dengan Node.js |
+| `make test-python` | Test `app` role dengan Python |
+| `make test-list` | List semua scenario yang tersedia |
+
+### Cleanup
+
+| Command | Description |
+|---------|-------------|
+| `make clean` | Hapus artifact molecule, `__pycache__`, dan `.pyc` |
+| `make clean-containers` | Destroy semua container molecule yang running |
+
+### Vault
+
+| Command | Description |
+|---------|-------------|
+| `make vault-edit` | Edit file vault-encrypted (default: `inventory/production/group_vars/all.yml`) |
+| `make vault-view` | Lihat isi file vault-encrypted tanpa decrypt |
+| `make vault-encrypt` | Encrypt file vars dengan vault |
+| `make vault-decrypt` | Decrypt file vars |
+
+Untuk override file vault: `make vault-edit VAULT_FILE=path/to/file.yml`
 
 ## Hardening yang Diterapkan
 
@@ -159,16 +294,10 @@ mysql_root_password: "{{ vault_mysql_root_password }}"
    ansible-playbook --check playbooks/site.yml
    ```
 
-4. **Tagging**: Gunakan tags untuk menargetkan task tertentu
+4. **Run Tests First**: Selalu jalankan Molecule tests sebelum apply ke server
    ```bash
-   ansible-playbook --tags "ssh,firewall" playbooks/site.yml
+   cd roles/common && molecule test
    ```
-
-## Requirements
-
-- Ansible >= 2.9
-- Python 3 on target hosts
-- SSH access dengan key-based authentication
 
 ## License
 

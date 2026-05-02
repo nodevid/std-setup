@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    ssh_port: 2222
+    ssh_authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... test@local"
+    mysql_root_password: "testpassword123"
+    database_type: mysql
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common

@@ -10,7 +10,7 @@
   notify: Restart SSH
 
 - name: Set SSH port in selinux context (RHEL/Rocky)
-  ansible.builtin.seport:
+  community.general.seport:
     ports: "{{ ssh_port }}"
     proto: tcp
     setype: ssh_port_t

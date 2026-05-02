@@ -1,24 +1,5 @@
 ---
-webservers:
-  vars:
-    firewall_allowed_tcp_ports:
-      - "{{ ssh_port }}"
-      - 80
-      - 443
-
-databases:
-  vars:
-    firewall_allowed_tcp_ports:
-      - "{{ ssh_port }}"
-      - 3306
-      - 5432
-    firewall_allowed_subnets:
-      - 10.0.1.0/24
-
-appservers:
-  vars:
-    firewall_allowed_tcp_ports:
-      - "{{ ssh_port }}"
-      - 3000
-      - 8000
-      - 8080
+firewall_allowed_tcp_ports:
+  - "{{ ssh_port }}"
+  - 80
+  - 443

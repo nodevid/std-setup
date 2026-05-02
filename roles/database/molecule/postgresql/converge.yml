@@ -1,0 +1,23 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    database_type: postgresql
+    database_hardening_enabled: true
+    postgresql_version: "14"
+    postgresql_databases:
+      - name: testdb
+    postgresql_users:
+      - name: testuser
+        password: "testuserpass"
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common
+    - role: database

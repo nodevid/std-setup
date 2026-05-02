@@ -28,6 +28,9 @@ autoupdate_service: unattended-upgrades
 # SSH
 ssh_service: ssh
 
+# Fail2ban
+fail2ban_logpath: /var/log/auth.log
+
 # Unused filesystems to disable
 unused_filesystems:
   - cramfs

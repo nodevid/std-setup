@@ -1,0 +1,24 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    webserver_type: nginx
+    ssl_enabled: true
+    security_headers_enabled: true
+    nginx_sites:
+      - name: test-site
+        server_name: ["test.example.com"]
+        root: /var/www/test-site
+        ssl: true
+    nginx_remove_default_site: true
+  pre_tasks:
+    - name: Install systemd-sysv for service management
+      ansible.builtin.apt:
+        name: systemd-sysv
+        state: present
+        update_cache: true
+  roles:
+    - role: common
+    - role: webserver

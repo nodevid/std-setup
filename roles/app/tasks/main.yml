@@ -22,11 +22,20 @@
     - app_type == "nodejs"
     - ansible_facts['os_family'] == "Debian"
   block:
-    - name: Add NodeSource repository
-      ansible.builtin.shell: curl -fsSL https://deb.nodesource.com/setup_{{ nodejs_version }}.x | bash -
+    - name: Download NodeSource setup script
+      ansible.builtin.get_url:
+        url: "https://deb.nodesource.com/setup_{{ nodejs_version }}.x"
+        dest: "/tmp/nodesource_setup_{{ nodejs_version }}.x.sh"
+        mode: '0755'
+      register: nodesource_download
+      failed_when: false
+
+    - name: Run NodeSource setup script
+      ansible.builtin.command: bash /tmp/nodesource_setup_{{ nodejs_version }}.x.sh
       args:
         creates: /etc/apt/sources.list.d/nodesource.list
-      ignore_errors: yes
+      when: nodesource_download is succeeded
+      failed_when: false
 
     - name: Install Node.js
       ansible.builtin.apt:
@@ -34,7 +43,6 @@
           - nodejs
           - npm
         state: present
-      when: ansible_facts['os_family'] == "Debian"
 
 - name: Install Node.js (RHEL/Rocky)
   when:
@@ -50,36 +58,10 @@
 
 - name: Deploy Node.js apps
   when: app_type == "nodejs" and nodejs_apps is defined
+  ansible.builtin.include_tasks: deploy_nodejs_app.yml
   loop: "{{ nodejs_apps }}"
-  block:
-    - name: Create app directory
-      ansible.builtin.file:
-        path: "{{ app_base_dir }}/{{ item.name }}"
-        state: directory
-        owner: "{{ app_user }}"
-        group: "{{ app_group }}"
-        mode: '0755'
-
-    - name: Deploy app files (placeholder)
-      ansible.builtin.copy:
-        content: |
-          console.log('Hello from {{ item.name }}');
-        dest: "{{ app_base_dir }}/{{ item.name }}/app.js"
-        owner: "{{ app_user }}"
-        group: "{{ app_group }}"
-        mode: '0644'
-
-    - name: Create systemd service for Node.js app
-      ansible.builtin.template:
-        src: nodejs.service.j2
-        dest: /etc/systemd/system/{{ item.name }}.service
-        owner: root
-        group: root
-        mode: '0644'
-      notify: Restart Node.js app
-      vars:
-        app_name: "{{ item.name }}"
-        app_port: "{{ item.port | default(3000) }}"
+  loop_control:
+    loop_var: nodejs_app
 
 # Python setup
 - name: Install Python
