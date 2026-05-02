@@ -1,33 +1,39 @@
 # Std-Setup: Ansible Server Hardening Repository
 
-Repository Ansible untuk standar konfigurasi dan hardening server yang mendukung multi-distro (Debian/Ubuntu dan RHEL/Rocky).
+Ansible repository for standard server configuration and hardening with multi-distro support (Debian/Ubuntu and RHEL/Rocky).
 
-## Fitur Utama
+## Features
 
-- **Server Hardening Lengkap**: SSH hardening, firewall, fail2ban, auditd, IPv6 disable, SELinux/AppArmor
-- **Multi-Distro Support**: Otomatis mendeteksi dan mengonfigurasi berdasarkan OS family
-- **Modular Roles**: Terpisah antara common, webserver, database, dan app
-- **Environment Separation**: Production dan staging inventories
-- **Custom SSH Port**: Default port 2222 (bisa dikonfigurasi)
+- **Comprehensive Server Hardening**: SSH hardening, firewall, fail2ban, auditd, IPv6 disable, SELinux/AppArmor
+- **Multi-Distro Support**: Automatically detects and configures based on OS family
+- **Modular Roles**: Separated into common, webserver, database, and app
+- **Environment Separation**: Production and staging inventories
+- **Custom SSH Port**: Default port 2222 (configurable)
 - **Test Coverage**: 76+ tests via Molecule + testinfra across 6 scenarios
 
 ## Requirements
 
 - Ansible >= 2.9
 - Python 3 on target hosts
-- SSH access dengan key-based authentication
+- SSH access with key-based authentication
 
 ## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
+make deps
+```
+
+Or manually:
+
+```bash
 ansible-galaxy collection install -r requirements.yml
 ```
 
-### 2. Konfigurasi Inventory
+### 2. Configure Inventory
 
-Edit `inventory/production/hosts.yml` dengan server Anda:
+Edit `inventory/production/hosts.yml` with your servers:
 
 ```yaml
 all:
@@ -46,38 +52,39 @@ all:
 
 ### 3. Set Authorized Keys
 
-Edit `inventory/production/group_vars/all.yml`, tambahkan SSH public key:
+Edit `inventory/production/group_vars/all.yml` and add your SSH public key:
 
 ```yaml
 ssh_authorized_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@workstation"
 ```
 
-### 4. Jalankan Playbook
+### 4. Run Playbook
 
 ```bash
-# Apply semua konfigurasi
-ansible-playbook playbooks/site.yml
+# Apply all configuration
+make run
 
-# Atau per kategori
-ansible-playbook playbooks/webserver.yml
-ansible-playbook playbooks/database.yml
-ansible-playbook playbooks/app.yml
+# Or per category
+make run-web
+make run-db
+make run-app
 
 # Dry-run (check mode)
-ansible-playbook --check playbooks/site.yml
+make check
 
-# Target spesifik role
+# Target specific roles
 ansible-playbook --tags "ssh,firewall" playbooks/site.yml
 ```
 
-## Struktur Direktori
+## Directory Structure
 
 ```
 std-setup/
-├── ansible.cfg                    # Konfigurasi Ansible
+├── ansible.cfg                    # Ansible configuration
 ├── .ansible-lint                  # Ansible-lint rules
-├── requirements.yml               # Dependensi collections/roles
+├── Makefile                       # Command shortcuts for all operations
+├── requirements.yml               # Collection/role dependencies
 ├── inventory/
 │   ├── production/               # Production environment
 │   │   ├── hosts.yml
@@ -108,37 +115,31 @@ std-setup/
 ### Prerequisites
 
 ```bash
+make dev-deps
+```
+
+Or manually:
+
+```bash
 pip install molecule molecule-plugins[docker] docker pytest-testinfra
 ```
 
-### Run All Tests for a Role
+### Run Tests
 
 ```bash
-cd roles/common && molecule test
-cd roles/webserver && molecule test
-cd roles/database && molecule test -s mysql
-cd roles/database && molecule test -s postgresql
-cd roles/app && molecule test -s nodejs
-cd roles/app && molecule test -s python
-```
+# Run all tests
+make test
 
-### Run Specific Stages
+# Run specific role tests
+make test-common     # common role (debian12, ubuntu2204)
+make test-web        # webserver role (debian12, ubuntu2204)
+make test-mysql      # database role with MySQL
+make test-pgsql      # database role with PostgreSQL
+make test-nodejs     # app role with Node.js
+make test-python     # app role with Python
 
-```bash
-# Only converge (apply role) without destroy
-molecule converge
-
-# Only verify (run tests)
-molecule verify
-
-# Check playbook syntax
-molecule syntax
-```
-
-### Lint Check
-
-```bash
-ansible-lint
+# List available scenarios
+make test-list
 ```
 
 ### Test Scenarios Overview
@@ -156,7 +157,7 @@ ansible-lint
 
 ## Makefile Commands
 
-Semua operasi bisa dijalankan via `make`. Lihat semua target:
+All operations can be run via `make`. See all targets:
 
 ```bash
 make help
@@ -166,87 +167,87 @@ make help
 
 | Command | Description |
 |---------|-------------|
-| `make deps` | Install Ansible Galaxy collections dari `requirements.yml` |
+| `make deps` | Install Ansible Galaxy collections from `requirements.yml` |
 | `make dev-deps` | Install Python test dependencies (molecule, testinfra, ansible-lint) |
 
 ### Linting
 
 | Command | Description |
 |---------|-------------|
-| `make lint` | Run `ansible-lint` pada seluruh repo |
+| `make lint` | Run `ansible-lint` on the entire repo |
 
 ### Playbooks
 
 | Command | Description |
 |---------|-------------|
-| `make run` | Jalankan `site.yml` ke production inventory |
-| `make run-staging` | Jalankan `site.yml` ke staging inventory |
-| `make run-web` | Jalankan `webserver.yml` playbook |
-| `make run-db` | Jalankan `database.yml` playbook |
-| `make run-app` | Jalankan `app.yml` playbook |
-| `make check` | Dry-run `site.yml` ke production (`--check` mode) |
-| `make check-staging` | Dry-run `site.yml` ke staging (`--check` mode) |
+| `make run` | Run `site.yml` against production inventory |
+| `make run-staging` | Run `site.yml` against staging inventory |
+| `make run-web` | Run `webserver.yml` playbook |
+| `make run-db` | Run `database.yml` playbook |
+| `make run-app` | Run `app.yml` playbook |
+| `make check` | Dry-run `site.yml` against production (`--check` mode) |
+| `make check-staging` | Dry-run `site.yml` against staging (`--check` mode) |
 
 ### Testing (Molecule)
 
 | Command | Description |
 |---------|-------------|
-| `make test` | Jalankan SEMUA molecule tests (6 scenarios) |
+| `make test` | Run ALL molecule tests (6 scenarios) |
 | `make test-common` | Test `common` role (debian12, ubuntu2204) |
 | `make test-web` | Test `webserver` role (debian12, ubuntu2204) |
-| `make test-mysql` | Test `database` role dengan MySQL |
-| `make test-pgsql` | Test `database` role dengan PostgreSQL |
-| `make test-nodejs` | Test `app` role dengan Node.js |
-| `make test-python` | Test `app` role dengan Python |
-| `make test-list` | List semua scenario yang tersedia |
+| `make test-mysql` | Test `database` role with MySQL |
+| `make test-pgsql` | Test `database` role with PostgreSQL |
+| `make test-nodejs` | Test `app` role with Node.js |
+| `make test-python` | Test `app` role with Python |
+| `make test-list` | List all available scenarios |
 
 ### Cleanup
 
 | Command | Description |
 |---------|-------------|
-| `make clean` | Hapus artifact molecule, `__pycache__`, dan `.pyc` |
-| `make clean-containers` | Destroy semua container molecule yang running |
+| `make clean` | Remove molecule artifacts, `__pycache__`, and `.pyc` files |
+| `make clean-containers` | Destroy all running molecule containers |
 
 ### Vault
 
 | Command | Description |
 |---------|-------------|
-| `make vault-edit` | Edit file vault-encrypted (default: `inventory/production/group_vars/all.yml`) |
-| `make vault-view` | Lihat isi file vault-encrypted tanpa decrypt |
-| `make vault-encrypt` | Encrypt file vars dengan vault |
-| `make vault-decrypt` | Decrypt file vars |
+| `make vault-edit` | Edit vault-encrypted file (default: `inventory/production/group_vars/all.yml`) |
+| `make vault-view` | View vault-encrypted file contents without decrypting |
+| `make vault-encrypt` | Encrypt a vars file with vault |
+| `make vault-decrypt` | Decrypt a vars file |
 
-Untuk override file vault: `make vault-edit VAULT_FILE=path/to/file.yml`
+To override the vault file: `make vault-edit VAULT_FILE=path/to/file.yml`
 
-## Hardening yang Diterapkan
+## Hardening Applied
 
-### Common Role (Semua Server)
+### Common Role (All Servers)
 - **SSH Hardening**: Custom port (2222), disable root login, disable password auth
 - **Firewall**: UFW (Debian) / Firewalld (RHEL), whitelist ports
-- **Fail2ban**: Proteksi brute force SSH
-- **Auditd**: Audit sistem dan login
-- **IPv6**: Dinonaktifkan (rekomendasi)
-- **SELinux/AppArmor**: Enforcing mode (aktif)
-- **Auto-Update**: Security updates otomatis
+- **Fail2ban**: SSH brute-force protection
+- **Auditd**: System and login auditing
+- **IPv6**: Disabled (recommended)
+- **SELinux/AppArmor**: Enforcing mode (active)
+- **Auto-Update**: Automatic security updates
 - **System Hardening**: Disable unused filesystems, harden /tmp, disable core dumps
 
 ### Webserver Role
-- Nginx atau Apache installation
+- Nginx or Apache installation
 - SSL/TLS configuration (TLS 1.2/1.3)
 - Security headers (HSTS, X-Frame-Options, etc.)
 - Support multiple sites
 
 ### Database Role
-- MySQL atau PostgreSQL installation
+- MySQL or PostgreSQL installation
 - Remove anonymous users & test database
 - Create databases & users
 
 ### App Role
-- Node.js, Python, atau Java support
+- Node.js, Python, or Java support
 - Systemd service management
 - App user isolation
 
-## Konfigurasi Variabel
+## Configuration Variables
 
 ### SSH Configuration
 ```yaml
@@ -267,36 +268,41 @@ firewall_allowed_subnets:
 
 ### Webserver Type
 ```yaml
-webserver_type: nginx  # atau apache
+webserver_type: nginx  # or apache
 ssl_enabled: true
 ```
 
 ### Database Type
 ```yaml
-database_type: mysql  # atau postgresql
+database_type: mysql  # or postgresql
 mysql_root_password: "{{ vault_mysql_root_password }}"
 ```
 
 ## Best Practices
 
-1. **Gunakan Vault**: Simpan password database dan secret lainnya di Ansible Vault
+1. **Use Vault**: Store database passwords and secrets in Ansible Vault
    ```bash
    ansible-vault encrypt_string 'mysecret' --name 'vault_mysql_root_password'
    ```
 
-2. **Test di Staging**: Selalu uji di staging sebelum production
+2. **Test in Staging**: Always test in staging before production
    ```bash
-   ansible-playbook -i inventory/staging/hosts.yml playbooks/site.yml
+   make run-staging
    ```
 
-3. **Check Mode**: Gunakan `--check` untuk dry-run
+3. **Check Mode**: Use `--check` for dry-run
    ```bash
-   ansible-playbook --check playbooks/site.yml
+   make check
    ```
 
-4. **Run Tests First**: Selalu jalankan Molecule tests sebelum apply ke server
+4. **Run Tests First**: Always run Molecule tests before applying to servers
    ```bash
-   cd roles/common && molecule test
+   make test
+   ```
+
+5. **Run Lint**: Check for issues before committing
+   ```bash
+   make lint
    ```
 
 ## License
