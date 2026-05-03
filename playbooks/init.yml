@@ -15,7 +15,6 @@
 
   vars:
     admin_user: admin
-    admin_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | password_hash('sha512') }}"
     new_ssh_port: 2222
 
   pre_tasks:
@@ -32,7 +31,6 @@
     - name: Create admin user
       ansible.builtin.user:
         name: "{{ admin_user }}"
-        password: "{{ admin_password }}"
         shell: /bin/bash
         groups: "{{ 'sudo' if ansible_facts['os_family'] == 'Debian' else 'wheel' }}"
         append: true
