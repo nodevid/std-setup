@@ -27,6 +27,9 @@ MOLECULE_WEB    := $(ROLES_DIR)/webserver
 MOLECULE_DB     := $(ROLES_DIR)/database
 MOLECULE_APP    := $(ROLES_DIR)/app
 
+# Init
+INIT_INVENTORY  ?= inventory/new-hosts.yml
+
 # Colors for output
 GREEN  := \033[0;32m
 YELLOW := \033[0;33m
@@ -55,6 +58,7 @@ help: ## Show this help message
 	@echo "  run-web        Run webserver playbook"
 	@echo "  run-db         Run database playbook"
 	@echo "  run-app        Run app playbook"
+	@echo "  init           Initialize new server (create admin, set SSH port 2222, disable root)"
 	@echo "  check          Dry-run site playbook (--check)"
 	@echo "  check-staging  Dry-run staging playbook (--check)"
 	@echo ""
@@ -131,6 +135,12 @@ check: ## Dry-run site playbook (--check)
 .PHONY: check-staging
 check-staging: ## Dry-run staging playbook (--check)
 	$(ANSIBLE) --check -i $(INVENTORY_STG) $(PLAYBOOKS)/site.yml
+
+.PHONY: init
+init: ## Initialize new server (set INIT_INVENTORY=path to new host inventory)
+	@echo "$(GREEN)Initializing new server...$(NC)"
+	@echo "$(YELLOW)Connecting as root, will prompt for password and admin SSH key.$(NC)"
+	$(ANSIBLE) -u root --ask-pass -i $(INIT_INVENTORY) $(PLAYBOOKS)/init.yml
 
 # ==============================================================================
 # Testing (Molecule)

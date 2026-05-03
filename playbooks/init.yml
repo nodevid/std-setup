@@ -1,0 +1,148 @@
+---
+# init.yml - Initial server setup: create admin user, configure SSH, harden root access
+# Usage: ansible-playbook -u root --ask-pass -i inventory/new-hosts.yml playbooks/init.yml
+# Or: make init INIT_INVENTORY=inventory/new-hosts.yml
+
+- name: Initialize New Server
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_prompt:
+    - name: admin_pub_key
+      prompt: "Enter admin SSH public key (e.g., ssh-ed25519 AAAA...)"
+      private: false
+      confirm: true
+
+  vars:
+    admin_user: admin
+    admin_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | password_hash('sha512') }}"
+    new_ssh_port: 2222
+
+  pre_tasks:
+    - name: Validate SSH port is not already configured
+      ansible.builtin.fail:
+        msg: "SSH port 2222 already configured and root login may already be disabled. Check server state."
+      when:
+        - ansible_facts['distribution'] is defined
+      register: port_check
+      changed_when: false
+      failed_when: false
+
+  tasks:
+    - name: Create admin user
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        password: "{{ admin_password }}"
+        shell: /bin/bash
+        groups: "{{ 'sudo' if ansible_facts['os_family'] == 'Debian' else 'wheel' }}"
+        append: true
+        create_home: true
+        state: present
+
+    - name: Ensure sudo group has passwordless sudo (Debian)
+      when: ansible_facts['os_family'] == 'Debian'
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/sudo
+        content: "sudo ALL=(ALL) NOPASSWD:ALL\n"
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Ensure wheel group has passwordless sudo (RHEL)
+      when: ansible_facts['os_family'] == 'RedHat'
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/wheel
+        content: "wheel ALL=(ALL) NOPASSWD:ALL\n"
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Set authorized key for admin user
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ admin_pub_key }}"
+        state: present
+
+    - name: Ensure .ssh directory exists for admin
+      ansible.builtin.file:
+        path: "/home/{{ admin_user }}/.ssh"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0700'
+
+    - name: Set authorized key file permissions
+      ansible.builtin.file:
+        path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: '0600'
+
+    - name: Install SSH server if not present
+      ansible.builtin.package:
+        name: openssh-server
+        state: present
+
+    - name: Backup original sshd_config
+      ansible.builtin.copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak.{{ ansible_date_time.epoch }}
+        remote_src: true
+        mode: '0600'
+
+    - name: Configure SSH - set port to 2222
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port\s+'
+        line: "Port {{ new_ssh_port }}"
+        state: present
+        validate: 'sshd -t -f %s'
+
+    - name: Configure SSH - disable root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin\s+'
+        line: "PermitRootLogin no"
+        state: present
+        validate: 'sshd -t -f %s'
+
+    - name: Configure SSH - disable password authentication (optional hardening)
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication\s+'
+        line: "PasswordAuthentication no"
+        state: present
+        validate: 'sshd -t -f %s'
+
+    - name: Validate SSH configuration
+      ansible.builtin.command: sshd -t
+      register: sshd_test
+      changed_when: false
+      failed_when: sshd_test.rc != 0
+
+    - name: Restart SSH service
+      ansible.builtin.service:
+        name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+        state: restarted
+
+    - name: Wait for SSH to come back on new port
+      ansible.builtin.wait_for:
+        port: "{{ new_ssh_port }}"
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        delay: 3
+        timeout: 30
+      delegate_to: localhost
+      become: false
+
+    - name: Verification notice
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          INIT COMPLETE - IMPORTANT NEXT STEPS:
+          ============================================================
+          1. Update your inventory to use port {{ new_ssh_port }}:
+             {{ inventory_hostname }} ansible_port={{ new_ssh_port }} ansible_user={{ admin_user }}
+
+          2. Test admin SSH access before closing this session:
+             ssh -p {{ new_ssh_port }} {{ admin_user }}@{{ ansible_host | default(inventory_hostname) }}
+
+          3. Root login is now DISABLED. Ensure admin access works!
+          ============================================================

@@ -59,7 +59,30 @@ ssh_authorized_keys:
   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@workstation"
 ```
 
-### 4. Run Playbook
+### 4. Initialize New Server (First-Time Setup)
+
+For a fresh server with only root SSH access, use `make init` to:
+- Create an `admin` user with sudo privileges
+- Set up SSH key-based authentication for `admin`
+- Change SSH port to 2222
+- Disable root login
+
+```bash
+# Create inventory for new server
+cat > inventory/new-hosts.yml <<EOF
+all:
+  hosts:
+    new-server.example.com:
+EOF
+
+# Run init (will prompt for root password and admin SSH public key)
+make init INIT_INVENTORY=inventory/new-hosts.yml
+
+# After init, update inventory to use new port and admin user:
+# new-server.example.com ansible_port=2222 ansible_user=admin
+```
+
+### 5. Run Playbook
 
 ```bash
 # Apply all configuration
@@ -105,6 +128,7 @@ std-setup/
 │       └── molecule/python/      # Molecule tests (8 tests)
 └── playbooks/
     ├── site.yml                  # Master playbook
+    ├── init.yml                  # New server initialization
     ├── webserver.yml
     ├── database.yml
     └── app.yml
@@ -185,6 +209,7 @@ make help
 | `make run-web` | Run `webserver.yml` playbook |
 | `make run-db` | Run `database.yml` playbook |
 | `make run-app` | Run `app.yml` playbook |
+| `make init` | Initialize new server (create admin, set SSH port 2222, disable root) |
 | `make check` | Dry-run `site.yml` against production (`--check` mode) |
 | `make check-staging` | Dry-run `site.yml` against staging (`--check` mode) |
 
@@ -280,30 +305,37 @@ mysql_root_password: "{{ vault_mysql_root_password }}"
 
 ## Best Practices
 
-1. **Use Vault**: Store database passwords and secrets in Ansible Vault
+1. **Use init for new servers**: For fresh servers, always run `make init` first to set up admin user and harden SSH before applying full playbooks
+   ```bash
+   make init INIT_INVENTORY=inventory/new-hosts.yml
+   ```
+
+2. **Use Vault**: Store database passwords and secrets in Ansible Vault
    ```bash
    ansible-vault encrypt_string 'mysecret' --name 'vault_mysql_root_password'
    ```
 
-2. **Test in Staging**: Always test in staging before production
+3. **Test in Staging**: Always test in staging before production
    ```bash
    make run-staging
    ```
 
-3. **Check Mode**: Use `--check` for dry-run
+4. **Check Mode**: Use `--check` for dry-run
    ```bash
    make check
    ```
 
-4. **Run Tests First**: Always run Molecule tests before applying to servers
+5. **Run Tests First**: Always run Molecule tests before applying to servers
    ```bash
    make test
    ```
 
-5. **Run Lint**: Check for issues before committing
+6. **Run Lint**: Check for issues before committing
    ```bash
    make lint
    ```
+
+7. **Update Inventory After Init**: After `make init`, update your production inventory to use port 2222 and `ansible_user=admin`
 
 ## License
 
